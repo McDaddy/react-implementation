@@ -1,0 +1,1 @@
+export const REACT_TEXT = Symbol('REACT_TEXT'); // 代表纯文本类型 Symbol用来做唯一性
