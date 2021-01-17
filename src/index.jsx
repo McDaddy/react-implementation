@@ -30,7 +30,16 @@ class ClassComponent extends React.Component {
 
   handleClick = () => {
     this.setState({ count: this.state.count + 1 });
-  };
+    console.log(this.state);
+    this.setState({ count: this.state.count + 1 });
+    this.setState({ count: this.state.count + 1 });
+    this.setState({ count: this.state.count + 1 });
+    console.log(this.state);
+    // setTimeout(() => {
+    //     this.setState({ count: this.state.count + 1 });
+    //     console.log(this.state);
+    // });
+};
 
   render() {
     return (

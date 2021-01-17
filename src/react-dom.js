@@ -1,4 +1,5 @@
 import { REACT_TEXT } from "./constants";
+import { addEvent } from "./event";
 
 /**
  * 比如 ReactDOM.render(<div>123</div>, document.getElementById("root"));
@@ -96,7 +97,8 @@ function updateProps(dom, oldProps, newProps) {
       }
     } else if (key.startsWith("on")) {
       // 特殊处理所有事件
-      dom[key.toLocaleLowerCase()] = newProps[key];
+      //   dom[key.toLocaleLowerCase()] = newProps[key];
+      addEvent(dom, key.toLocaleLowerCase(), newProps[key]);
     } else {
       // 普通属性 如className
       dom[key] = newProps[key];
