@@ -14,8 +14,14 @@ export function render(vdom, container) {
 }
 
 export function mount(vdom, container) {
+  if (!vdom) {
+    return;
+  }
   const newDOM = createDOM(vdom);
   container.appendChild(newDOM);
+  if (newDOM.componentDidMount) {
+    newDOM.componentDidMount();
+  }
 }
 
 /**
@@ -30,9 +36,9 @@ export function createDOM(vdom) {
   } else if (typeof type === "function") {
     // 自定义函数组件
     if (type.isReactComponent) {
-      return mountClassComponent(vdom);
+      dom = mountClassComponent(vdom);
     } else {
-      return mountFunctionComponent(vdom);
+      dom = mountFunctionComponent(vdom);
     }
   } else {
     // 原生的标签比如div
@@ -73,10 +79,17 @@ function mountClassComponent(vdom) {
   const { type, props } = vdom;
   const classInstance = new type(props); // 不同于函数组件，class组件需要new之后得到class实例
   vdom.classInstance = classInstance; // 用于后续dom-diff使用
+  if (classInstance.componentWillMount) {
+    classInstance.componentWillMount();
+  }
   const renderVdom = classInstance.render();
   // classInstance在updateComponent使用，vdom在findDOM中使用
   classInstance.oldRenderVdom = vdom.oldRenderVdom = renderVdom;
-  return createDOM(renderVdom);
+  const dom = createDOM(renderVdom);
+  if (classInstance.componentDidMount) {
+    dom.componentDidMount = classInstance.componentDidMount.bind(classInstance);
+  }
+  return dom;
 }
 
 /**
