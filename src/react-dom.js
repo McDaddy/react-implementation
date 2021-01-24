@@ -209,8 +209,8 @@ function deepCompare(oldVdom, newVdom) {
 
 /**
  * 更新函数组件
- * @param {*} oldVdom 
- * @param {*} newVdom 
+ * @param {*} oldVdom
+ * @param {*} newVdom
  */
 function updateFunctionComponent(oldVdom, newVdom) {
   const parentDOM = findDOM(oldVdom).parentNode; // 得到老的真实DOM
@@ -221,7 +221,47 @@ function updateFunctionComponent(oldVdom, newVdom) {
   newVdom.oldRenderVdom = newRenderVdom;
 }
 
+/**
+ * 更新class组件
+ * @param {}} oldVdom
+ * @param {*} newVdom
+ */
+function updateClassComponent(oldVdom, newVdom) {
+  const classInstance = (newVdom.classInstance = oldVdom.classInstance); // 复用类的实例，类的实例不管怎么更新，永远是一个实例
+  newVdom.oldRenderVdom = oldVdom.oldRenderVdom;
+  if (classInstance.componentWillReceiveProps) {
+    // 生命周期
+    classInstance.componentWillReceiveProps();
+  }
+  // 触发组件的更新，传入新的props
+  classInstance.updater.emitUpdate(newVdom.props);
+}
 
+/**
+ * 深度比较儿子
+ * @param {*} parentDOM 
+ * @param {*} oldVChildren 
+ * @param {*} newVChildren 
+ */
+function updateChildren(parentDOM, oldVChildren, newVChildren) {
+  // 统一为数组
+  oldVChildren = Array.isArray(oldVChildren) ? oldVChildren : [oldVChildren];
+  newVChildren = Array.isArray(newVChildren) ? newVChildren : [newVChildren];
+  // 如果old的长度大，那么老的后面的部分不需要比较， newVdom[i]就是空
+  // 如果new的长度大， 那么老的[i]就是空， 新的会直接创建
+  let maxLength = Math.max(oldVChildren.length, newVChildren.length);
+  for (let i = 0; i < maxLength; i++) {
+    const nextDOM = oldVChildren.find( // 找到老的儿子中，index大于当前节点的， 用于找到合适插入位置
+      (item, index) => index > i && item && item.dom
+    );
+    compareTwoVdom(
+      parentDOM,
+      oldVChildren[i],
+      newVChildren[i],
+      nextDOM && nextDOM.dom
+    );
+  }
+}
 
 const ReactDOM = { render };
 export default ReactDOM;
