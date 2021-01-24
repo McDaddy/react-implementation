@@ -1,4 +1,4 @@
-import { createDOM, findDOM } from "./react-dom";
+import { createDOM, findDOM, compareTwoVdom } from "./react-dom";
 import { isFunction } from "./utils";
 
 export const updateQueue = {
@@ -37,7 +37,7 @@ class Updater {
     //   classInstance.updateComponent();
     // }
     if (nextProps || pendingStates.length > 0) {
-      shouldUpdate(classInstance, nextProps, this.getState())
+      shouldUpdate(classInstance, nextProps, this.getState());
     }
   }
   getState() {
@@ -95,8 +95,11 @@ export class Component {
     // render方法是在实现类中定义的
     let newRenderVdom = this.render(); // 重新调用render方法，得到新的虚拟DOM
     const oldDOM = findDOM(this.oldRenderVdom);
-    const newDOM = createDOM(newRenderVdom);
-    oldDOM.parentNode.replaceChild(newDOM, oldDOM);
+    // 这里只会无条件重新创建DOM
+    // const newDOM = createDOM(newRenderVdom);
+    // oldDOM.parentNode.replaceChild(newDOM, oldDOM);
+    // 替换成DOM DIFF
+    compareTwoVdom(oldDOM.parentNode, this.oldRenderVdom, newRenderVdom);
     this.oldRenderVdom = newRenderVdom;
     if (this.componentDidUpdate) {
       this.componentDidUpdate(this.props, this.state);

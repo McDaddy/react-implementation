@@ -120,7 +120,7 @@ function updateProps(dom, oldProps, newProps) {
 }
 
 /**
- * 得到vdom的renderVdom
+ * 得到vdom的真实dom
  * @param {*} vdom 分两种情况，1. 原生标签， 2. 自定义组件
  */
 export function findDOM(vdom) {
@@ -135,6 +135,93 @@ export function findDOM(vdom) {
   }
   return dom;
 }
+
+// dom diff
+export function compareTwoVdom(parentDOM, oldVdom, newVdom, nextDOM) {
+  if (!oldVdom && !newVdom) {
+    // 老的没有，新的也没有，那就不需要改变什么
+    return;
+  } else if (oldVdom && !newVdom) {
+    // 老的有，新的没有，就是需要卸载了
+    const currentDOM = findDOM(oldVdom); // 找到当前vdom的真实dom
+    if (currentDOM) {
+      parentDOM.removeChild(currentDOM);
+    }
+    if (oldVdom.classInstance && oldVdom.classInstance.componentWillUnmount) {
+      oldVdom.classInstance.componentWillUnmount();
+    }
+    return;
+  } else if (!oldVdom && newVdom) {
+    // 以前没有，现在有，就要直接新建DOM
+    const newDOM = createDOM(newVdom);
+    if (nextDOM) {
+      parentDOM.insertBefore(newDOM, nextDOM); // 如果原来的dom是有下面的弟弟元素。那么要插入到弟弟前面
+    } else {
+      parentDOM.appendChild(newDOM); // 唯一的子元素或者原来的oldDOM就是最后一个元素
+    }
+    if (newDOM.componentDidMount) {
+      newDOM.componentDidMount();
+    }
+    return;
+  } else if (oldVdom && newVdom && oldVdom.type !== newVdom.type) {
+    // 前后都有，但是类型不同，也要重建
+    const oldDOM = findDOM(oldVdom);
+    const newDOM = createDOM(newVdom);
+    oldDOM.parentNode.replaceChild(newDOM, oldDOM);
+    if (oldVdom.classInstance && oldVdom.classInstance.componentWillUnmount) {
+      oldVdom.classInstance.componentWillUnmount();
+    }
+    if (newDOM.componentDidMount) {
+      newDOM.componentDidMount();
+    }
+    return;
+  } else {
+    // 新老节点都有值，且类型相同
+    deepCompare(oldVdom, newVdom);
+    return;
+  }
+}
+
+/**
+ * 深度比较两个虚拟DOM， 到了这个方法里面， 前提是oldVdom和newVdom的都存在且type一致
+ * @param {*} oldVdom
+ * @param {*} newVdom
+ */
+function deepCompare(oldVdom, newVdom) {
+  if (oldVdom.type === REACT_TEXT) {
+    // 当时文本节点，就复用老的DOM节点
+    const currentDOM = (newVdom.dom = oldVdom.dom);
+    currentDOM.textContent = newVdom.props.content; // 直接修改老DOM节点的内容
+  } else if (typeof oldVdom.type === "string") {
+    // 如果是原生类型
+    const currentDOM = (newVdom.dom = oldVdom.dom);
+    updateProps(currentDOM, oldVdom.props, newVdom.props); // 复用老的DOM， 更新DOM上的属性
+    updateChildren(currentDOM, oldVdom.props.children, newVdom.props.children); // 更新儿子
+  } else if (typeof oldVdom.type === "function") {
+    // 自定义组件， 分门别类更新
+    if (oldVdom.type.isReactComponent) {
+      updateClassComponent(oldVdom, newVdom);
+    } else {
+      updateFunctionComponent(oldVdom, newVdom);
+    }
+  }
+}
+
+/**
+ * 更新函数组件
+ * @param {*} oldVdom 
+ * @param {*} newVdom 
+ */
+function updateFunctionComponent(oldVdom, newVdom) {
+  const parentDOM = findDOM(oldVdom).parentNode; // 得到老的真实DOM
+  const { type, props } = newVdom;
+  const { oldRenderVdom } = oldVdom; // 得到老的renderVdom 即 被转化成原生tag的Vdom
+  const newRenderVdom = type(props); // 执行函数，得到新的vdom
+  compareTwoVdom(parentDOM, oldRenderVdom, newRenderVdom); // 因为类型是相同的，所以要比较两个函数组件前后属性和children的区别，能复用的就复用
+  newVdom.oldRenderVdom = newRenderVdom;
+}
+
+
 
 const ReactDOM = { render };
 export default ReactDOM;
