@@ -1,4 +1,4 @@
-import { Component } from './Component';
+import { Component } from "./Component";
 import { wrapToVdom } from "./utils";
 
 /**
@@ -9,11 +9,14 @@ import { wrapToVdom } from "./utils";
  */
 function createElement(type, config, children) {
   let key;
+  let ref;
   if (config) {
     delete config.__source;
     delete config.__self;
     key = config.key;
     delete config.key;
+    ref = config.ref;
+    delete config.ref;
   }
   let props = { ...config };
   if (arguments.length > 3) {
@@ -28,12 +31,31 @@ function createElement(type, config, children) {
     type,
     key,
     props,
+    ref,
   };
+}
+function createRef() {
+  return { current: null };
+}
+
+function createContext(initialValue = {}) {
+  let context = { Provider, Consumer };
+  function Provider(props) {
+    context._currentValue = context._currentValue || initialValue;
+    Object.assign(context._currentValue, props.value);
+    return props.children;
+  }
+  function Consumer(props) {
+    return props.children(context._currentValue);
+  }
+  return context;
 }
 
 const React = {
   createElement,
   Component,
+  createRef,
+  createContext,
 };
 
 export default React;

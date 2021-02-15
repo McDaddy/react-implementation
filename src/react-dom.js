@@ -1,5 +1,6 @@
 import { REACT_TEXT } from "./constants";
 import { addEvent } from "./event";
+import { getDerivedStateFromProps } from "./Component";
 
 /**
  * 比如 ReactDOM.render(<div>123</div>, document.getElementById("root"));
@@ -60,6 +61,9 @@ export function createDOM(vdom) {
   }
   // 将真实dom挂载在vdom中，供后续更新使用，e.g. 在findDOM中通过vdom.dom拿到真实的dom
   vdom.dom = dom;
+  if (ref) {
+    ref.current = dom;
+  }
   return dom;
 }
 
@@ -79,9 +83,17 @@ function mountClassComponent(vdom) {
   const { type, props } = vdom;
   const classInstance = new type(props); // 不同于函数组件，class组件需要new之后得到class实例
   vdom.classInstance = classInstance; // 用于后续dom-diff使用
+  if (type.contextType) {
+    classInstance.context = type.contextType._currentValue;
+  }
   if (classInstance.componentWillMount) {
     classInstance.componentWillMount();
   }
+  classInstance.state = getDerivedStateFromProps(
+    classInstance,
+    classInstance.props,
+    classInstance.state
+  );
   const renderVdom = classInstance.render();
   // classInstance在updateComponent使用，vdom在findDOM中使用
   classInstance.oldRenderVdom = vdom.oldRenderVdom = renderVdom;
@@ -239,9 +251,9 @@ function updateClassComponent(oldVdom, newVdom) {
 
 /**
  * 深度比较儿子
- * @param {*} parentDOM 
- * @param {*} oldVChildren 
- * @param {*} newVChildren 
+ * @param {*} parentDOM
+ * @param {*} oldVChildren
+ * @param {*} newVChildren
  */
 function updateChildren(parentDOM, oldVChildren, newVChildren) {
   // 统一为数组
@@ -251,7 +263,8 @@ function updateChildren(parentDOM, oldVChildren, newVChildren) {
   // 如果new的长度大， 那么老的[i]就是空， 新的会直接创建
   let maxLength = Math.max(oldVChildren.length, newVChildren.length);
   for (let i = 0; i < maxLength; i++) {
-    const nextDOM = oldVChildren.find( // 找到老的儿子中，index大于当前节点的， 用于找到合适插入位置
+    const nextDOM = oldVChildren.find(
+      // 找到老的儿子中，index大于当前节点的， 用于找到合适插入位置
       (item, index) => index > i && item && item.dom
     );
     compareTwoVdom(

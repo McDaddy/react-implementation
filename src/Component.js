@@ -4,14 +4,10 @@ import { isFunction } from "./utils";
 export const updateQueue = {
   isBatchUpdate: false,
   updaters: new Set(), // 等待更新的队列
-  add(updater) {
-    updateQueue.updaters.add(updater); // 这个updater就是Updater的实例
-  },
   batchUpdate() {
     // 批量更新
     for (const updater of updateQueue.updaters) {
-      //   updater.updateComponent();
-      updater.emitUpdate();
+      updater.updateComponent();
     }
     updateQueue.isBatchUpdate = false;
     updateQueue.updaters.clear();
@@ -23,24 +19,33 @@ class Updater {
   constructor(classInstance) {
     this.classInstance = classInstance;
     this.pendingStates = []; // 用来记录有哪些传入的需要更新的state，还未被更新
+    this.callbacks = [];
+    this.nextProps = classInstance.props;
   }
-  addState(partialState) {
+  addState(partialState, callback) {
     this.pendingStates.push(partialState);
-    // this.emitUpdate();
-    updateQueue.isBatchUpdate ? updateQueue.add(this) : this.emitUpdate(); // 判断下如果是batch模式就加入update队列，否则立即触发更新
+    if (typeof callback === "function") {
+      this.callbacks.push(callback); //状态更新后的回调
+    }
+    this.emitUpdate();
   }
   emitUpdate(nextProps) {
-    const { classInstance, pendingStates } = this;
-    // if (pendingStates.length > 0) {
-    //   const nextState = this.getState(); // 取得批量合成后的state
-    //   classInstance.state = nextState;
-    //   classInstance.updateComponent();
-    // }
-    if (nextProps || pendingStates.length > 0) {
-      shouldUpdate(classInstance, nextProps, this.getState());
+    this.nextProps = nextProps || this.nextProps;
+    if (updateQueue.isBatchingUpdate) {
+      //如果当前的批量模式。先缓存updater
+      updateQueue.updaters.push(this); //本次setState调用结束
+    } else {
+      this.updateComponent(); //直接更新组件
     }
   }
-  getState() {
+  updateComponent() {
+    let { classInstance, pendingStates, nextProps } = this;
+    // 如果有等待更新的状态对象的话
+    if (nextProps || pendingStates.length > 0) {
+      shouldUpdate(classInstance, nextProps, this.getState(nextProps));
+    }
+  }
+  getState(nextProps) {
     const { classInstance, pendingStates } = this;
     let { state } = classInstance;
     if (pendingStates.length) {
@@ -53,8 +58,22 @@ class Updater {
       });
       pendingStates.length = 0; //清空队列
     }
+    state = getDerivedStateFromProps(classInstance, nextProps, state);
     return state;
   }
+}
+
+export function getDerivedStateFromProps(classInstance, nextProps, state) {
+  if (classInstance.constructor.getDerivedStateFromProps) {
+    const partialState = classInstance.constructor.getDerivedStateFromProps(
+      nextProps,
+      state
+    );
+    if (partialState) {
+      state = { ...state, ...partialState };
+    }
+  }
+  return state;
 }
 
 function shouldUpdate(classInstance, nextProps, nextState) {
@@ -83,18 +102,16 @@ export class Component {
   }
   setState(partialState, callback) {
     this.updater.addState(partialState, callback); // 在updater中添加一个partialState
-    // this.state = { ...this.state, ...partialState };
-    // this.updateComponent();
   }
   forceUpdate() {
-    let nextState = this.state;
-    let nextProps = this.props;
+    this.state = getDerivedStateFromProps(this, this.props, this.state);
     this.updateComponent();
   }
   updateComponent() {
     // render方法是在实现类中定义的
     let newRenderVdom = this.render(); // 重新调用render方法，得到新的虚拟DOM
     const oldDOM = findDOM(this.oldRenderVdom);
+    let extraArgs = this.getSnapshotBeforeUpdate && this.getSnapshotBeforeUpdate();
     // 这里只会无条件重新创建DOM
     // const newDOM = createDOM(newRenderVdom);
     // oldDOM.parentNode.replaceChild(newDOM, oldDOM);
@@ -102,7 +119,7 @@ export class Component {
     compareTwoVdom(oldDOM.parentNode, this.oldRenderVdom, newRenderVdom);
     this.oldRenderVdom = newRenderVdom;
     if (this.componentDidUpdate) {
-      this.componentDidUpdate(this.props, this.state);
+      this.componentDidUpdate(this.props, this.state, extraArgs);
     }
   }
 }

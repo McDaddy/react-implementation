@@ -2,6 +2,8 @@
 // import ReactDOM from "react-dom";
 import React from "./react";
 import ReactDOM from "./react-dom";
+// import { Counter } from "./case/getSnapshotBeforeUpdate.jsx";
+import { Person } from "./case/context.jsx";
 
 function App() {
   return (
@@ -26,34 +28,45 @@ function FunctionComponent() {
 
 class ClassComponent extends React.Component {
   constructor(props) {
-    console.log('constructor');
+    console.log("constructor");
     super(props);
     this.state = { count: 0 };
   }
 
   componentDidMount() {
-    console.log('componentDidMount');
+    console.log("componentDidMount");
   }
 
   componentDidUpdate() {
-    console.log('componentDidUpdate');
+    console.log("componentDidUpdate");
   }
 
   componentWillMount() {
-    console.log('componentWillMount');
+    console.log("componentWillMount");
   }
 
   componentWillUpdate() {
-    console.log('componentWillUpdate');
+    console.log("componentWillUpdate");
   }
 
   componentWillUnmount() {
-    console.log('componentWillUnmount');
+    console.log("componentWillUnmount");
   }
 
   shouldComponentUpdate() {
-    console.log('shouldComponentUpdate');
+    console.log("shouldComponentUpdate");
     return true;
+  }
+
+  static getDerivedStateFromProps(nextProps, prevState) {
+    console.log("ChildCounter getDerivedStateFromProps");
+    const { count } = nextProps;
+    // 当传入的type发生变化的时候，更新state
+    if (count % 2 === 0) {
+      return { number: count * 2 };
+    } else {
+      return { number: count * 3 };
+    }
   }
 
   handleClick = () => {
@@ -74,7 +87,7 @@ class ClassComponent extends React.Component {
   };
 
   render() {
-    console.log('render');
+    console.log("render");
     return (
       <div>
         <p>number: {this.state.count}</p>
@@ -84,5 +97,6 @@ class ClassComponent extends React.Component {
   }
 }
 
-ReactDOM.render(<ClassComponent />, document.getElementById("root"));
+ReactDOM.render(<Person />, document.getElementById("root"));
+// ReactDOM.render(<ClassComponent />, document.getElementById("root"));
 // ReactDOM.render(<FunctionComponent />, document.getElementById("root"));
