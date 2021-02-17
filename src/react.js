@@ -1,5 +1,6 @@
 import { Component, PureComponent } from "./Component";
 import { wrapToVdom } from "./utils";
+import { useState, useReducer } from './react-dom';
 
 /**
  * 创建一个虚拟DOM
@@ -70,6 +71,8 @@ const React = {
   createContext,
   PureComponent,
   memo,
+  useReducer,
+  useState
 };
 
 export default React;

@@ -2,6 +2,11 @@ import { REACT_TEXT } from "./constants";
 import { addEvent } from "./event";
 import { getDerivedStateFromProps } from "./Component";
 
+// 存放所有状态
+const hookStates = [];
+let hookIndex = 0;
+let scheduleUpdate;
+
 /**
  * 比如 ReactDOM.render(<div>123</div>, document.getElementById("root"));
  * 此时我不需要做任何事情，进来的<div>123</div>, 直接就是一个标准的React虚拟DOM
@@ -12,6 +17,10 @@ import { getDerivedStateFromProps } from "./Component";
  */
 export function render(vdom, container) {
   mount(vdom, container);
+  scheduleUpdate = () => {
+    hookIndex = 0;
+    compareTwoVdom(container, vdom, vdom);
+  }
 }
 
 export function mount(vdom, container) {
@@ -163,7 +172,6 @@ export function compareTwoVdom(parentDOM, oldVdom, newVdom, nextDOM) {
     if (oldVdom.classInstance && oldVdom.classInstance.componentWillUnmount) {
       oldVdom.classInstance.componentWillUnmount();
     }
-    return;
   } else if (!oldVdom && newVdom) {
     // 以前没有，现在有，就要直接新建DOM
     const newDOM = createDOM(newVdom);
@@ -175,7 +183,9 @@ export function compareTwoVdom(parentDOM, oldVdom, newVdom, nextDOM) {
     if (newDOM.componentDidMount) {
       newDOM.componentDidMount();
     }
-    return;
+    // if (hookStates[hookIndex]) {
+      
+    // }
   } else if (oldVdom && newVdom && oldVdom.type !== newVdom.type) {
     // 前后都有，但是类型不同，也要重建
     const oldDOM = findDOM(oldVdom);
@@ -187,11 +197,9 @@ export function compareTwoVdom(parentDOM, oldVdom, newVdom, nextDOM) {
     if (newDOM.componentDidMount) {
       newDOM.componentDidMount();
     }
-    return;
   } else {
     // 新老节点都有值，且类型相同
     deepCompare(oldVdom, newVdom);
-    return;
   }
 }
 
@@ -279,3 +287,32 @@ function updateChildren(parentDOM, oldVChildren, newVChildren) {
 
 const ReactDOM = { render };
 export default ReactDOM;
+
+export function useState(initState) {
+  return useReducer(null, initState);
+}
+
+export function useReducer(reducer, initialState) {
+  // 取出老的值，没有的话使用初始值
+  hookStates[hookIndex] = hookStates[hookIndex] || (typeof initialState === 'function' ? initialState() : initialState);
+  let currentIndex = hookIndex;  // 对于同一个useXxx, 它的index是固定不变的
+
+  function dispatch(action) {
+    const lastState = hookStates[currentIndex];
+    let nextState;
+    if (typeof action === 'function') {
+      nextState = action(lastState);
+    }
+    if (reducer) {
+      nextState = reducer(nextState, action);
+    } else {
+      nextState = action;
+    }
+
+    if (lastState !== nextState) {
+      hookStates[currentIndex] = nextState;
+      scheduleUpdate();
+    }
+  }
+  return [hookStates[hookIndex++], dispatch];
+}
