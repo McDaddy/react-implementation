@@ -31,9 +31,9 @@ class Updater {
   }
   emitUpdate(nextProps) {
     this.nextProps = nextProps || this.nextProps;
-    if (updateQueue.isBatchingUpdate) {
+    if (updateQueue.isBatchUpdate) {
       //如果当前的批量模式。先缓存updater
-      updateQueue.updaters.push(this); //本次setState调用结束
+      updateQueue.updaters.add(this); //本次setState调用结束
     } else {
       this.updateComponent(); //直接更新组件
     }
@@ -111,7 +111,8 @@ export class Component {
     // render方法是在实现类中定义的
     let newRenderVdom = this.render(); // 重新调用render方法，得到新的虚拟DOM
     const oldDOM = findDOM(this.oldRenderVdom);
-    let extraArgs = this.getSnapshotBeforeUpdate && this.getSnapshotBeforeUpdate();
+    let extraArgs =
+      this.getSnapshotBeforeUpdate && this.getSnapshotBeforeUpdate();
     // 这里只会无条件重新创建DOM
     // const newDOM = createDOM(newRenderVdom);
     // oldDOM.parentNode.replaceChild(newDOM, oldDOM);
@@ -122,4 +123,50 @@ export class Component {
       this.componentDidUpdate(this.props, this.state, extraArgs);
     }
   }
+}
+
+export class PureComponent extends Component {
+  // 重写此方法，只有属性变化了才更新
+  shouldComponentUpdate(nextProps, nextState) {
+    return (
+      !shallowEqual(this.props, nextProps) ||
+      !shallowEqual(this.state, nextState)
+    );
+  }
+}
+
+/**
+ * 浅比较, 如果前后是都是新建的对象{ count: 1 }即使内存地址变化，依然是可以浅比较相等的
+ * 但如果是{ count: { num: 1 } }, 那么就没用了，因为内层的{ num: 1 }的内存地址前后不同，还是会返回false
+ * @param {*} obj1 
+ * @param {*} obj2 
+ */
+function shallowEqual(obj1, obj2) {
+  if (obj1 === obj2) { // 内存地址相同或是原始类型相同，就相等
+    return true;
+  }
+  // 如果有一方不是Object类型或者为null，即原始类型，且不相等，就返回false
+  if (
+    typeof obj1 !== "object" ||
+    obj1 === null ||
+    typeof obj2 !== "object" ||
+    obj2 === null
+  ) {
+    return false;
+  }
+  // 走到这里，两边都是对象类型
+  const keys1 = Object.keys(obj1);
+  const keys2 = Object.keys(obj2);
+  // 属性个数不等，返回false
+  if (keys1.length !== keys2.length) {
+    return false;
+  }
+  // 走到此处，两个属性长度相同
+  for (const key of keys1) {
+    // 如果obj2没有obj1中有的属性， 或者， 同个属性值不等（Object类型内存地址不同）就返回false
+    if (!obj2.hasOwnProperty(key) || obj1[key] !== obj2[key]) {
+      return false;
+    }
+  }
+  return true;
 }

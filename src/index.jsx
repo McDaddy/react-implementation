@@ -3,7 +3,8 @@
 import React from "./react";
 import ReactDOM from "./react-dom";
 // import { Counter } from "./case/getSnapshotBeforeUpdate.jsx";
-import { Person } from "./case/context.jsx";
+// import { Person } from "./case/context.jsx";
+import { Counter } from './case/pureComponent.jsx';
 
 function App() {
   return (
@@ -97,6 +98,6 @@ class ClassComponent extends React.Component {
   }
 }
 
-ReactDOM.render(<Person />, document.getElementById("root"));
+ReactDOM.render(<Counter />, document.getElementById("root"));
 // ReactDOM.render(<ClassComponent />, document.getElementById("root"));
 // ReactDOM.render(<FunctionComponent />, document.getElementById("root"));

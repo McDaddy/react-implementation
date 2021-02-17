@@ -44,12 +44,12 @@ export function createDOM(vdom) {
   } else {
     // 原生的标签比如div
     dom = document.createElement(type); // 一个原生的DOM元素，什么属性都没
+    // 使用props里面的属性来更新刚创建出来的真实DOM属性
+    updateProps(dom, {}, props);
   }
   // 经过上已经创建出了一个真实的DOM节点，接下来就是更新这个节点的属性以及加载它的子元素
 
   if (props) {
-    // 使用props里面的属性来更新刚创建出来的真实DOM属性
-    updateProps(dom, {}, props);
     // 这里处理children属性
     // 当只有一个儿子时，直接挂载到当前的父DOM上
     if (typeof props.children === "object" && props.children.type) {
@@ -73,7 +73,8 @@ function reconcileChildren(childrenVdom, parentDOM) {
 
 function mountFunctionComponent(vdom) {
   const { type, props } = vdom;
-  // renderVdom和vdom的区别是，renderVdom是一个经过执行的最终vdom，只有原生的组件节点，而vdom可能是有自定义的组件的
+  // renderVdom和vdom的区别是，renderVdom是一个经过执行的最终vdom（只保证顶层都是原始，内层还是有可能有自定义），
+  // 只有原生的组件节点，而vdom可能是有自定义的组件的
   const renderVdom = type(props); // 相当于执行了函数组件的函数体
   vdom.oldRenderVdom = renderVdom; // 用于后续dom-diff使用
   return createDOM(renderVdom);
@@ -122,7 +123,7 @@ function updateProps(dom, oldProps, newProps) {
       }
     } else if (key.startsWith("on")) {
       // 特殊处理所有事件
-      //   dom[key.toLocaleLowerCase()] = newProps[key];
+      // dom[key.toLocaleLowerCase()] = newProps[key];
       addEvent(dom, key.toLocaleLowerCase(), newProps[key]);
     } else {
       // 普通属性 如className
@@ -243,7 +244,7 @@ function updateClassComponent(oldVdom, newVdom) {
   newVdom.oldRenderVdom = oldVdom.oldRenderVdom;
   if (classInstance.componentWillReceiveProps) {
     // 生命周期
-    classInstance.componentWillReceiveProps();
+    classInstance.componentWillReceiveProps(newVdom.props);
   }
   // 触发组件的更新，传入新的props
   classInstance.updater.emitUpdate(newVdom.props);

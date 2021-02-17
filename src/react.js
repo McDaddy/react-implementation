@@ -1,4 +1,4 @@
-import { Component } from "./Component";
+import { Component, PureComponent } from "./Component";
 import { wrapToVdom } from "./utils";
 
 /**
@@ -51,11 +51,25 @@ function createContext(initialValue = {}) {
   return context;
 }
 
+/**
+ * memo的本质就是返回了一个PureComponent
+ * @param {*} OldComponent 
+ */
+function memo(OldComponent) {
+  return class extends PureComponent {
+    render() {
+      return <OldComponent {...this.props} />
+    }
+  }
+}
+
 const React = {
   createElement,
   Component,
   createRef,
   createContext,
+  PureComponent,
+  memo,
 };
 
 export default React;
